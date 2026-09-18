@@ -1,5 +1,5 @@
 # CIS4614_Music_Sheet (Senior Project CIS4614)
-This project is a C++ command-line application created for our Sr.Project CIS 4614. 
+This project is a C++/python command-line application created for our Sr.Project CIS 4614. 
 It takes a music file and returns a digital sheet music file (MusicXML) that you can read and edit.
 
 To do this, the program works in two simple steps:

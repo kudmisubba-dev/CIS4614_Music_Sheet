@@ -1,0 +1,4 @@
+basic-pitch==0.4.0
+music21
+onnxruntime
+setuptools<81

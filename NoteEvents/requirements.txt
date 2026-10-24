@@ -1,3 +1,5 @@
 basic-pitch
 music21
 pedalboard
+pandas
+numpy

@@ -1,3 +1,9 @@
+"""
+beatdata.py
+run:
+    python beatdata.py output/input_note_events.csv
+"""
+import argparse
 import csv
 from collections import defaultdict
 from typing import Dict, List
@@ -60,3 +66,17 @@ class BeatData:
                 results[beat] = "NOT MELODY"
 
         return dict(sorted(results.items()))
+
+
+def main():
+    parser = argparse.ArgumentParser()
+    parser.add_argument("csv_path")
+    args = parser.parse_args()
+
+    results = BeatData.analyze_melody_from_csv(args.csv_path)
+    for beat, label in results.items():
+        print(f"beat {beat}: {label}")
+
+
+if __name__ == "__main__":
+    main()

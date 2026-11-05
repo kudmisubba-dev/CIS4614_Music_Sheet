@@ -2,7 +2,7 @@
 separating.py
 -> adds part column to note events, labeling each note as "melody" or "accompaniment".
 
-Rules applied: 
+Rules applied:
   1. Notes significantly quieter 9below quiet_ratio) than the measure's average volume are not melody.
   2. Then highest pitch note is labelled melody
   3. If another note is MUCH louder than the measure average according to loud_ratio, it overwrites highest pitch as melody.
@@ -77,19 +77,25 @@ def write_events(events, csv_path):
         writer.writerows(events)
 
 
+def separate(csv_path):
+    # Label a note events CSV and write <name>_separated.csv. Returns the output path.
+    base, _ = os.path.splitext(csv_path)
+    output_path = f"{base}_separated.csv"
+
+    events = read_events(csv_path)
+    events = assign_parts(events)
+    write_events(events, output_path)
+
+    print(f"Separated CSV written to {output_path}")
+    return output_path
+
+
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("csv_path")
     args = parser.parse_args()
 
-    base, _ = os.path.splitext(args.csv_path)
-    output_path = f"{base}_separated.csv"
-
-    events = read_events(args.csv_path)
-    events = assign_parts(events)
-    write_events(events, output_path)
-
-    print(f"Separated CSV written to {output_path}")
+    separate(args.csv_path)
 
 
 if __name__ == "__main__":

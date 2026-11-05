@@ -165,40 +165,40 @@ def build_quantized_midi(events, midi_path: str, bpm: float):
 
 
 
-def main():
-    # Basic Pitch settings (fixed)
-    ONSET_THRESHOLD = 0.5
-    FRAME_THRESHOLD = 0.3
-    MIN_NOTE_LENGTH_MS = 127.70
+# Basic Pitch settings (fixed)
+ONSET_THRESHOLD = 0.5
+FRAME_THRESHOLD = 0.3
+MIN_NOTE_LENGTH_MS = 127.70
 
-    # Noise gate settings (fixed, except ratio which is a CLI arg)
-    GATE_THRESHOLD_DB = -30.0
-    GATE_ATTACK_MS = 2.0
-    GATE_RELEASE_MS = 100.0
+# Noise gate settings (fixed, except ratio which is a CLI arg)
+GATE_THRESHOLD_DB = -30.0
+GATE_ATTACK_MS = 2.0
+GATE_RELEASE_MS = 100.0
 
-    parser = argparse.ArgumentParser(description="Audio -> quantized MIDI + note events")
-    parser.add_argument("audio_path")
-    parser.add_argument("--output-dir", default="output")
-    parser.add_argument("--bpm", type=float, default=120.0)
-    parser.add_argument("--grid", type=int, default=16, choices=[4, 8, 16, 32])                         
-    parser.add_argument("--min-amplitude", type=float, default=0.0)
-    parser.add_argument("--gate", action="store_true")
-    parser.add_argument("--gate-ratio", type=float, default=10.0)
-    args = parser.parse_args()
 
-    os.makedirs(args.output_dir, exist_ok=True)
-    base_name = os.path.splitext(os.path.basename(args.audio_path))[0]
-    quantized_midi_path = os.path.join(args.output_dir, f"{base_name}_quantized.mid")
-    csv_path = os.path.join(args.output_dir, f"{base_name}_note_events.csv")
+def transcribe(
+    audio_path: str,
+    output_dir: str = "output",
+    bpm: float = 120.0,
+    grid: int = 16,
+    min_amplitude: float = 0.0,
+    gate: bool = False,
+    gate_ratio: float = 10.0,
+):
+    # Full transcription: audio -> quantized MIDI + note events CSV. Returns the CSV path.
+    os.makedirs(output_dir, exist_ok=True)
+    base_name = os.path.splitext(os.path.basename(audio_path))[0]
+    quantized_midi_path = os.path.join(output_dir, f"{base_name}_quantized.mid")
+    csv_path = os.path.join(output_dir, f"{base_name}_note_events.csv")
 
-    audio_for_basic_pitch = args.audio_path
-    if args.gate:
-        gated_path = os.path.join(args.output_dir, f"{base_name}_gated.wav")
+    audio_for_basic_pitch = audio_path
+    if gate:
+        gated_path = os.path.join(output_dir, f"{base_name}_gated.wav")
         apply_noise_gate(
-            args.audio_path,
+            audio_path,
             gated_path,
             threshold_db=GATE_THRESHOLD_DB,
-            ratio=args.gate_ratio,
+            ratio=gate_ratio,
             attack_ms=GATE_ATTACK_MS,
             release_ms=GATE_RELEASE_MS,
         )
@@ -210,10 +210,39 @@ def main():
         frame_threshold=FRAME_THRESHOLD,
         minimum_note_length=MIN_NOTE_LENGTH_MS,
     )
-    note_events = filter_note_events(note_events, args.min_amplitude)
-    quantized_events = quantize_note_events(note_events, args.bpm, args.grid)
+    note_events = filter_note_events(note_events, min_amplitude)
+    quantized_events = quantize_note_events(note_events, bpm, grid)
     export_note_events(quantized_events, csv_path)
-    build_quantized_midi(quantized_events, quantized_midi_path, args.bpm)
+    build_quantized_midi(quantized_events, quantized_midi_path, bpm)
+
+    return csv_path
+
+
+def add_cli_args(parser):
+    # Transcription options, shared with main.py so both take the same flags
+    parser.add_argument("audio_path")
+    parser.add_argument("--output-dir", default="output")
+    parser.add_argument("--bpm", type=float, default=120.0)
+    parser.add_argument("--grid", type=int, default=16, choices=[4, 8, 16, 32])
+    parser.add_argument("--min-amplitude", type=float, default=0.0)
+    parser.add_argument("--gate", action="store_true")
+    parser.add_argument("--gate-ratio", type=float, default=10.0)
+
+
+def main():
+    parser = argparse.ArgumentParser(description="Audio -> quantized MIDI + note events")
+    add_cli_args(parser)
+    args = parser.parse_args()
+
+    transcribe(
+        args.audio_path,
+        output_dir=args.output_dir,
+        bpm=args.bpm,
+        grid=args.grid,
+        min_amplitude=args.min_amplitude,
+        gate=args.gate,
+        gate_ratio=args.gate_ratio,
+    )
 
     print("Success")
 

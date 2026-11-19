@@ -1,7 +1,6 @@
 import os
 import sys
 
-# --- FORCES INTERACTIVE POPUP (If running locally) ---
 import matplotlib
 
 #matplotlib.use("TkAgg")

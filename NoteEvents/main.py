@@ -2,22 +2,23 @@
 main.py
 
 Runs the full NoteEvents pipeline on one audio file:
-    1. transcribe.py     audio -> quantized MIDI + note events CSV
+    1. transcribe.py     audio -> note events CSV
     2. separating.py     note events -> note events labeled melody / accompaniment
     3. music_harmony.py  separated note events -> key + chord on every beat
+    4. simplify.py       separated note events + harmony -> simplified MIDI
 
 How to run:
     python main.py input.wav
     python main.py input.wav --output-dir output/ --bpm 120 --grid 16
     python main.py input.wav --gate --gate-ratio 4
-    python main.py input.wav --accompaniment-only
-    
+
 Output files (in --output-dir), for input "song.wav":
-    song_quantized.mid
     song_note_events.csv
     song_note_events_separated.csv
     song_note_events_separated_harmony.csv
+    song_simplified.mid
 """
+
 import argparse
 import os
  

@@ -10,9 +10,11 @@ How to run:
 """
 import argparse
 import os
+import shutil
+import subprocess
 
 import pandas as pd
-from music21 import stream, tempo, meter, note, chord, instrument
+from music21 import stream, tempo, meter, note, chord, instrument, clef, key, metadata
 
 from music_harmony import NOTES
 
@@ -26,6 +28,26 @@ INTERVALS = {
 
 #keeping root between f2 and e3
 LOWEST_ROOT = 41
+
+########################################## CREATE SHEET MUSIC PDF #####################################################
+MUSESCORE_LOCATIONS = [
+    r"C:\Program Files\MuseScore 4\bin\MuseScore4.exe",
+    "/Applications/MuseScore 4.app/Contents/MacOS/mscore",
+]
+
+def find_musescore():
+    for path in [os.environ.get("MUSESCORE_PATH")] + MUSESCORE_LOCATIONS:
+        if path and os.path.isfile(path):
+            return path
+    return None
+
+
+def export_pdf(musicxml_path):
+    musescore = find_musescore()
+    pdf_path = os.path.splitext(musicxml_path)[0] + ".pdf"
+    subprocess.run([musescore, "-o", pdf_path, musicxml_path], check=True)
+    return pdf_path
+######################################################################################################################
 
 #increments length of previous chord OR makes new chord with duration staring at 1
 def chord_spans(harmony):
@@ -60,10 +82,23 @@ def simplify(separated_csv, harmony_csv, output_midi, bpm=120.0):
     harmony = pd.read_csv(harmony_csv)
 
     #save melody and insert into midi as 'right hand' 
-    melody = notes[notes["part"] == "melody"]
+    #melody = notes[notes["part"] == "melody"]
+
+###################################################
+    melody = notes[notes["part"] == "melody"].sort_values("start_beat").copy()
+
+    # melody is one note at a time: cut each note off when the next melody note starts
+    gap = melody["start_beat"].shift(-1) - melody["start_beat"]
+    melody["duration_beats"] = melody["duration_beats"].where(
+        gap.isna() | (melody["duration_beats"] <= gap), gap)
+    # Key signature from the harmony CSV, e.g. "G Major" -> G major, "Bb minor" -> B-flat minor
+    tonic, mode = harmony["key"].iloc[0].split(" ", 1)
+    key_signature = key.Key(tonic[0] + tonic[1:].replace("b", "-"), mode.lower())
 
     right = stream.Part()
     right.insert(0, instrument.Piano())
+    right.insert(0, clef.TrebleClef())
+    right.insert(0, key_signature)
     right.insert(0, tempo.MetronomeMark(number=bpm))
     right.insert(0, meter.TimeSignature("4/4"))
     for r in melody.itertuples():
@@ -75,6 +110,8 @@ def simplify(separated_csv, harmony_csv, output_midi, bpm=120.0):
     # insert 'left hand' two note chords
     left = stream.Part()
     left.insert(0, instrument.Piano())
+    left.insert(0, clef.BassClef())
+    left.insert(0, key_signature)
     left.insert(0, meter.TimeSignature("4/4"))
     for start, dur, name in chord_spans(harmony):
         pitches = two_note_chord(name, melody_during(melody, start, start + dur))
@@ -82,8 +119,19 @@ def simplify(separated_csv, harmony_csv, output_midi, bpm=120.0):
         c.duration.quarterLength = dur
         left.insert(start, c)
 
-    score = stream.Score([right, left])
+    '''score = stream.Score([right, left])
     score.write("midi", fp=output_midi)
+    return output_midi'''
+    score = stream.Score([right, left])
+    title = os.path.splitext(os.path.basename(output_midi))[0].replace("_", " ")
+    score.insert(0, metadata.Metadata(title=title, composer=""))
+
+    score.write("midi", fp=output_midi)
+    musicxml_path = os.path.splitext(output_midi)[0] + ".musicxml"
+    score.write("musicxml", fp=musicxml_path)
+    print(f"Simplified MIDI and MusicXML written to {output_midi}, {musicxml_path}")
+
+    export_pdf(musicxml_path)
     return output_midi
 
 def main():
@@ -94,8 +142,8 @@ def main():
     parser.add_argument("--output", default=None,
                         help="default: <separated csv name>_simplified.mid next to the input")
     args = parser.parse_args()
-
-    output = args.output or os.path.splitext(args.separated_csv)[0] + "_simplified.mid"
+    base = os.path.splitext(args.separated_csv)[0].replace("_note_events_separated", "")
+    output = args.output or base + "_simplified.mid"
     simplify(args.separated_csv, args.harmony_csv, output, bpm=args.bpm)
 
 

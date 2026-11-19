@@ -11,7 +11,7 @@ How to run:
     python main.py input.wav --output-dir output/ --bpm 120 --grid 16
     python main.py input.wav --gate --gate-ratio 4
     python main.py input.wav --accompaniment-only
-
+    
 Output files (in --output-dir), for input "song.wav":
     song_quantized.mid
     song_note_events.csv
@@ -24,7 +24,7 @@ import os
 from transcribe import transcribe, add_cli_args
 from separating import separate, BEATS_PER_MEASURE
 from music_harmony import export_harmony_csv
- 
+from simplify import simplify
  
 def main():
     parser = argparse.ArgumentParser(description="Audio -> note events -> melody/accompaniment -> chords")
@@ -55,6 +55,7 @@ def main():
         beats_per_measure=BEATS_PER_MEASURE,
     )
     print(f"Harmony CSV written to {harmony_csv}")
+    simplify(separated_csv, harmony_csv, os.path.splitext(separated_csv)[0] + "_simplified.mid", bpm=args.bpm)
  
  
 if __name__ == "__main__":

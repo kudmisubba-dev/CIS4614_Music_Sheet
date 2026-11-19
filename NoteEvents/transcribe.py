@@ -18,9 +18,6 @@ from collections import Counter
 
 from basic_pitch.inference import predict
 from basic_pitch import ICASSP_2022_MODEL_PATH
-
-from music21 import stream, tempo, meter, note
-
 from pedalboard import Pedalboard, NoiseGate
 from pedalboard.io import AudioFile
 
@@ -34,7 +31,7 @@ def apply_noise_gate(
     release_ms: float,
 ):
     """
-    Run the audio through a noise gate before it ever reaches Basic Pitch.
+    Run the audio through a noise gate before it reaches Basic Pitch.
     Once the signal drops below threshold_db, the gate shortens it instead of letting the note sustain.
     """
 
@@ -60,11 +57,8 @@ def run_basic_pitch(
     frame_threshold: float = 0.3,
     minimum_note_length: float = 127.70,
 ):
-    #CREATING NOTE EVENTS ! 
-    #onset_threshold / frame_threshold: raise these (default 0.5 / 0.3) to require a stronger signal to start or continue a note. 
-    # minimum_note_length: notes shorter than this (in ms) are discarded
-
-    print(f"[1/4] Running basic pitch")
+    #CREATING NOTE EVENTS 
+    print(f"[1/3] Running basic pitch")
 
     _, _, note_events = predict(
         audio_path=audio_path,
@@ -74,7 +68,7 @@ def run_basic_pitch(
         minimum_note_length=minimum_note_length,
     )
 
-    print(f"      Basic Pitch detected {len(note_events)} raw note events")
+    print(f"      Found raw note events")
     return note_events
 
 
@@ -87,7 +81,7 @@ def filter_note_events(note_events, min_amplitude: float):
 def quantize_note_events(note_events, bpm: float, grid: int):
     # Rounds notes to nearest 1/grid value of a beat. grid = 32, 16, 8, or 4, grid = 4 is only quarter notes, etc
 
-    print(f"[2/4] Rounding note events ")
+    print(f"[2/3] Rounding note events ")
 
     bps = bpm / 60.0
     note_unit = 4.0 / grid
@@ -122,7 +116,7 @@ def quantize_note_events(note_events, bpm: float, grid: int):
 def export_note_events(events, csv_path: str):
     #Write the quantized note events to CSV
 
-    print(f"[3/4] Write note events to CSV")
+    print(f"[3/3] Write note events to CSV")
 
     notes_per_beat = Counter(e["start_beat"] for e in events)
     columns = ["start_beat", "duration_beats", "pitch", "velocity", "is_chord"]
@@ -143,26 +137,6 @@ def export_note_events(events, csv_path: str):
             })
 
     print(f" - Note events saved")
-
-
-def build_quantized_midi(events, midi_path: str, bpm: float):
-    # create a MIDI file from note events above
-
-    print(f"[4/4] Writing quantized MIDI ")
-
-    output_stream = stream.Stream()
-    output_stream.insert(0, tempo.MetronomeMark(number=bpm))
-    output_stream.insert(0, meter.TimeSignature("4/4"))
-
-    for e in events:
-        n = note.Note()
-        n.pitch.midi = e["pitch"]
-        n.duration.quarterLength = e["duration_beats"]
-        output_stream.insert(e["start_beat"], n)
-
-    output_stream.write("midi", fp=midi_path)
-    print(f"  - quantized midi")
-
 
 
 # Basic Pitch settings (fixed)
@@ -188,7 +162,6 @@ def transcribe(
     # Full transcription: audio -> quantized MIDI + note events CSV. Returns the CSV path.
     os.makedirs(output_dir, exist_ok=True)
     base_name = os.path.splitext(os.path.basename(audio_path))[0]
-    quantized_midi_path = os.path.join(output_dir, f"{base_name}_quantized.mid")
     csv_path = os.path.join(output_dir, f"{base_name}_note_events.csv")
 
     audio_for_basic_pitch = audio_path
@@ -213,18 +186,17 @@ def transcribe(
     note_events = filter_note_events(note_events, min_amplitude)
     quantized_events = quantize_note_events(note_events, bpm, grid)
     export_note_events(quantized_events, csv_path)
-    build_quantized_midi(quantized_events, quantized_midi_path, bpm)
 
     return csv_path
 
 
 def add_cli_args(parser):
-    # Transcription options, shared with main.py so both take the same flags
+    # transcribe options 
     parser.add_argument("audio_path")
     parser.add_argument("--output-dir", default="output")
     parser.add_argument("--bpm", type=float, default=120.0)
     parser.add_argument("--grid", type=int, default=16, choices=[4, 8, 16, 32])
-    parser.add_argument("--min-amplitude", type=float, default=0.0)
+    parser.add_argument("--min-amplitude", type=float, default=0.35) #REMOVE GHOST NOTES 
     parser.add_argument("--gate", action="store_true")
     parser.add_argument("--gate-ratio", type=float, default=10.0)
 

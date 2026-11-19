@@ -25,14 +25,6 @@ notes = pd.read_csv(file)
 
 accompaniment = notes
 
-'''
-accompaniment = notes
-if "part" in notes.columns:
-    accompaniment = notes[
-        notes["part"] == "accompaniment"
-    ]
-'''
-
 # 1. Determine the key (from all notes, melody included)
 key = detect_key(notes)
 print("Key:", key)

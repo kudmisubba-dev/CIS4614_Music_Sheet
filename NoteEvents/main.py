@@ -55,7 +55,8 @@ def main():
         beats_per_measure=BEATS_PER_MEASURE,
     )
     print(f"Harmony CSV written to {harmony_csv}")
-    simplify(separated_csv, harmony_csv, os.path.splitext(separated_csv)[0] + "_simplified.mid", bpm=args.bpm)
+    base_name = os.path.splitext(os.path.basename(args.audio_path))[0]
+    simplify(separated_csv, harmony_csv, os.path.join(args.output_dir, f"{base_name}_simplified.mid"), bpm=args.bpm)
  
  
 if __name__ == "__main__":
